@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Playlist Converter | Modern Dark Theme</title>
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/inter/3.19.3/inter.css" rel="stylesheet">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+        }
+
+        body {
+            min-height: 100vh;
+            background: #0a0a0a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+            color: #ffffff;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .hero-content {
+            background: rgba(20, 20, 20, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 3rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        h1 {
+            font-size: 3rem;
+            margin-bottom: 1rem;
+            font-weight: 800;
+            background: linear-gradient(to right, #ffffff, #ff0000);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        p {
+            font-size: 1.2rem;
+            margin-bottom: 2rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+
+        .form-group {
+            margin-bottom: 1.5rem;
+        }
+
+        input {
+            width: 100%;
+            padding: 1rem;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.05);
+            color: white;
+            font-size: 1rem;
+        }
+
+        input:focus {
+            outline: none;
+            background: rgba(255, 255, 255, 0.08);
+            border-color: rgba(255, 0, 0, 0.5);
+            box-shadow: 0 0 0 3px rgba(255, 0, 0, 0.2);
+        }
+
+        button {
+            width: 100%;
+            padding: 1.2rem;
+            border: none;
+            border-radius: 12px;
+            background: #ff0000;
+            color: white;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            position: relative;
+        }
+
+        button:hover {
+            background: #ff1a1a;
+        }
+
+        #responseMessage {
+            margin-top: 1rem;
+            font-size: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            .container {
+                padding: 1rem;
+            }
+
+            .hero-content {
+                padding: 2rem;
+            }
+
+            h1 {
+                font-size: 2.5rem;
+            }
+        }
+    </style>
+</head>
+
+<body>
+
+    <div class="container">
+        <div class="hero-content">
+            <h1>Convert Your Music</h1>
+            <p>Transform your Spotify playlists to YouTube with ease.</p>
+
+            <form id="playlistForm">
+                <div class="form-group">
+                    <input type="url" id="spotifyLink" placeholder="Paste your Spotify playlist link" required>
+                </div>
+                <div class="form-group">
+                    <input type="text" id="youtubeName" placeholder="Name your new YouTube playlist" required>
+                </div>
+                <button type="submit">Transform Playlist</button>
+            </form>
+
+            <p id="responseMessage"></p>
+        </div>
+    </div>
+
+    <script>
+        document.getElementById('playlistForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            // Get input values
+            const spotifyLinkInput = document.getElementById('spotifyLink').value.trim();
+            const youtubeName = document.getElementById('youtubeName').value.trim();
+            const button = e.target.querySelector('button');
+            const responseMessage = document.getElementById('responseMessage');
+
+            console.log("Spotify Input:", spotifyLinkInput);
+
+            // Extract playlist ID from Spotify URL
+            function extractPlaylistId(url) {
+                const match = url.match(/playlist\/([a-zA-Z0-9]+)/);
+                return match ? match[1] : null;
+            }
+
+            const spotifyPlaylistId = extractPlaylistId(spotifyLinkInput);
+
+            if (!spotifyPlaylistId) {
+                responseMessage.innerHTML = "⚠️ Please enter a valid Spotify playlist link.";
+                responseMessage.style.color = 'yellow';
+                return;
+            }
+
+            if (!youtubeName) {
+                responseMessage.innerHTML = "⚠️ Please provide a name for the new playlist.";
+                responseMessage.style.color = 'yellow';
+                return;
+            }
+
+            // Disable button & show loading state
+            button.innerHTML = 'Converting...';
+            button.style.background = '#cc0000';
+            button.disabled = true;
+
+            const requestData = {
+                name: youtubeName,
+                playlistId: spotifyPlaylistId
+            };
+
+            console.log("Sending data:", requestData);
+
+            try {
+                const response = await fetch('/', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify(requestData)
+                });
+                const data = await response.json();
+                if (data.redirectUrl) {
+                    window.location.href = data.redirectUrl;
+                }
+
+                console.log("Raw response:", response);
+
+                let result;
+                try {
+                    result = await response.json();
+                } catch (jsonError) {
+                    console.error("JSON parsing error:", jsonError);
+                    responseMessage.innerHTML = '⚠️ Unexpected server response. Try again later.';
+                    responseMessage.style.color = 'orange';
+                    return;
+                }
+
+                console.log("Parsed response:", result);
+
+                if (response.ok && result.success) {
+                    responseMessage.innerHTML = `✅ Playlist "<strong>${result.name}</strong>" created successfully!`;
+                    responseMessage.style.color = 'lightgreen';
+
+                    // Delay then attempt multiple redirect methods
+                    setTimeout(() => {
+                        console.log("Attempting redirect...");
+
+                        try {
+                            window.location.replace("/auth");
+                            console.log("Redirected via window.location.replace");
+                        } catch (error) {
+                            console.error("window.location.replace failed:", error);
+                        }
+
+                        try {
+                            window.location.assign("/auth");
+                            console.log("Redirected via window.location.assign");
+                        } catch (error) {
+                            console.error("window.location.assign failed:", error);
+                        }
+
+                        try {
+                            window.open("/auth", "_self");
+                            console.log("Redirected via window.open");
+                        } catch (error) {
+                            console.error("window.open failed:", error);
+                        }
+
+                        try {
+                            document.body.innerHTML += '<meta http-equiv="refresh" content="0;url=/auth">';
+                            console.log("Redirected via meta refresh");
+                        } catch (error) {
+                            console.error("Meta refresh failed:", error);
+                        }
+                    }, 4000);
+                } else {
+                    responseMessage.innerHTML = '❌ Error creating playlist. Please try again.';
+                    responseMessage.style.color = 'red';
+                }
+            } catch (error) {
+                console.error('Fetch request failed:', error);
+                responseMessage.innerHTML = '⚠️ Server error. Try again later.';
+                responseMessage.style.color = 'orange';
+            }
+
+            // Reset button after delay
+            setTimeout(() => {
+                button.innerHTML = 'Transform Playlist';
+                button.style.background = '#ff0000';
+                button.disabled = false;
+            }, 2000);
+        });
+    </script>
+
+
+
+
+</body>
+
+</html>
